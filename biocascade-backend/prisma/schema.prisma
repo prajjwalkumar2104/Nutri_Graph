@@ -1,0 +1,47 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EntityType {
+  DEFICIENCY
+  SYMPTOM
+  CONDITION
+  DISEASE
+}
+
+model Entity {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  type        EntityType
+  description String?
+
+  // Relationship definitions for graph traversal
+  edgesOut Edge[] @relation("SourceEntity")
+  edgesIn  Edge[] @relation("TargetEntity")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Edge {
+  id       String @id @default(uuid())
+  
+  sourceId String
+  targetId String
+
+  // Foreign key mapping
+  source   Entity @relation("SourceEntity", fields: [sourceId], references: [id], onDelete: Cascade)
+  target   Entity @relation("TargetEntity", fields: [targetId], references: [id], onDelete: Cascade)
+
+  // Optional: Describe the connection (e.g., "LEADS_TO", "WORSENS")
+  relation String @default("CAUSES")
+
+  // Edge case protection: Prevent duplicate connections between the exact same two nodes
+  @@unique([sourceId, targetId])
+}
