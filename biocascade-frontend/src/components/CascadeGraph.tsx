@@ -27,10 +27,9 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   
-  // TB = Top to Bottom. Adjust spacing here if needed.
+  // TB = Top to Bottom
   dagreGraph.setGraph({ rankdir: direction, ranksep: 150, nodesep: 80 });
 
-  // Define node dimensions based on our Tailwind classes (w-72 is approx 288px)
   const nodeWidth = 300; 
   const nodeHeight = 150;
 
@@ -58,7 +57,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   return { nodes: layoutedNodes, edges };
 };
 
-export default function CascadeGraph({ rootId }: { rootId: string }) {
+export default function CascadeGraph({ rootId, onNodeSelect }: { rootId: string, onNodeSelect: (data: any) => void }) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
 
@@ -66,20 +65,41 @@ export default function CascadeGraph({ rootId }: { rootId: string }) {
     const fetchGraph = async () => {
       try {
         const res = await fetch(`http://127.0.0.1:5000/api/cascade/${rootId}`);
+        
+        // 1. DEFENSIVE GUARD: Catch 500 Server Errors gracefully
+        if (!res.ok) {
+          throw new Error(`Backend failed with status: ${res.status}`);
+        }
+
         const data = await res.json();
 
-        const formattedNodes: Node[] = data.nodes.map((n: any) => ({
+        // 2. DEFENSIVE GUARD: Prevent '.map is not a function' crashes
+        if (!data || !data.nodes || !data.edges) {
+          console.warn("Invalid or empty data received from API.");
+          setNodes([]);
+          setEdges([]);
+          return;
+        }
+
+        const rawNodes: Node[] = data.nodes.map((n: any) => ({
           id: n.id,
           type: 'customCard',
-          position: { x: 0, y: 0 }, // Dagre will overwrite this!
+          position: { x: 0, y: 0 }, 
           data: { label: n.name, type: n.type, description: n.description },
         }));
 
-        const formattedEdges: Edge[] = data.edges.map((e: any) => ({
-          id: e.id,
+        // 3. DEDUPLICATION FIX: Merge overlapping nodes (Fixes Vitamin B12 and Zinc)
+        const uniqueNodes = Array.from(
+          new Map(rawNodes.map((node) => [node.id, node])).values()
+        );
+
+        // 3. Map the raw edges with a fallback unique ID
+        const rawEdges: Edge[] = data.edges.map((e: any, index: number) => ({
+          // FIX: Generate a unique ID if the database didn't provide one
+          id: e.id || `edge-${e.sourceId}-${e.targetId}-${index}`,
           source: e.sourceId,
           target: e.targetId,
-          label: e.relation,
+          label: e.relation || '',
           animated: true,
           style: { stroke: '#64748b', strokeWidth: 3 },
           labelStyle: { fill: '#475569', fontWeight: 700, fontSize: 12 },
@@ -87,16 +107,33 @@ export default function CascadeGraph({ rootId }: { rootId: string }) {
           markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#64748b' },
         }));
 
-        // Pass the raw nodes and edges through the layout calculator
+        // DEDUPLICATION FIX: Merge duplicate edges to prevent rendering glitches
+        const uniqueEdgesMap = new Map();
+        rawEdges.forEach(edge => {
+          const edgeSignature = `${edge.source}-${edge.target}`;
+          if (!uniqueEdgesMap.has(edgeSignature)) {
+            uniqueEdgesMap.set(edgeSignature, edge);
+          }
+        });
+        const deduplicatedEdges = Array.from(uniqueEdgesMap.values());
+
+        // 4. EDGE VALIDATION: Ensure Dagre doesn't crash drawing lines to missing nodes
+        const nodeIds = new Set(uniqueNodes.map((n) => n.id));
+        const validEdges = deduplicatedEdges.filter(
+          (e) => nodeIds.has(e.source) && nodeIds.has(e.target)
+        );
+
         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-          formattedNodes,
-          formattedEdges
+          uniqueNodes,
+          validEdges
         );
 
         setNodes(layoutedNodes);
         setEdges(layoutedEdges);
       } catch (error) {
         console.error("Failed to fetch graph:", error);
+        setNodes([]); // Clear the canvas instead of crashing
+        setEdges([]);
       }
     };
 
@@ -114,6 +151,7 @@ export default function CascadeGraph({ rootId }: { rootId: string }) {
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeClick={(event, node) => onNodeSelect(node.data)}
         fitView
       >
         <Background color="#94a3b8" gap={24} size={2} />
