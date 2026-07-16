@@ -1,21 +1,43 @@
 // src/index.ts
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { getCascadeTree ,searchNodes} from './controllers/graphController.js';
 
-dotenv.config();
+// Import our controllers
+import { getCascadeTree, searchNodes } from './controllers/graphController';
+import { semanticSearch } from './controllers/searchController';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Graph endpoint for tracing dependencies
-app.get('/api/search', searchNodes);
+// --- ROUTES ---
+
+// 1. Graph Data Endpoint
 app.get('/api/cascade/:id', getCascadeTree);
 
+// 2. Standard Text Search (Fallback)
+app.get('/api/search', searchNodes);
+
+// 3. New AI Semantic Vector Search
+app.get('/search/semantic', semanticSearch);
+
+// --- ERROR HANDLING ---
+
+// Prevent Express from returning HTML error pages on 404s
+app.use((req, res) => {
+  res.status(404).json({ error: `Route ${req.originalUrl} not found.` });
+});
+
+// Global error catcher to prevent server crashes
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error('Unhandled server error:', err);
+  res.status(500).json({ error: 'Internal Server Error' });
+});
+
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`BioCascade API running on http://localhost:${PORT}`);
+  console.log(`🚀 Backend API running actively on http://localhost:${PORT}`);
 });

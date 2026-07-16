@@ -15,7 +15,8 @@ export default function Home() {
   useEffect(() => {
     const bootstrapDefaultNode = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:5000/api/search?q=Vitamin');
+        // 🔥 FIX 1: Updated to hit the new Semantic Search endpoint!
+        const res = await fetch('http://localhost:5000/search/semantic?query=Vitamin');
         const data = await res.json();
         if (data && data.length > 0) setActiveRootId(data[0].id);
       } catch (error) {
@@ -32,21 +33,27 @@ export default function Home() {
   };
 
   return (
-    <main className="w-screen h-screen flex flex-col bg-slate-50 relative overflow-hidden">
+    <main className="w-screen h-screen flex bg-slate-50 relative overflow-hidden">
       
-      <SearchBar onSelectNode={handleSearchSelect} />
+      {/* 🔥 FIX 2: Made the SearchBar float cleanly over the top of the canvas */}
+      <div className="absolute top-6 left-0 right-0 z-50 px-4 pointer-events-none flex justify-center">
+        {/* We re-enable pointer events just for the search bar itself */}
+        <div className="pointer-events-auto w-full max-w-2xl">
+          {/* 🔥 FIX 3: Changed onSelectNode to onSelect to match the component */}
+          <SearchBar onSelect={handleSearchSelect} />
+        </div>
+      </div>
       
-      {/* We wrap the graph in a transition div so it slightly shifts left when the sidebar opens */}
+      {/* The Graph Canvas Wrapper */}
       <div 
-        className={`flex-1 w-full relative transition-all duration-300 ease-in-out ${
-          selectedNodeData ? 'pr-96' : 'pr-0'
+        className={`flex-1 h-full relative transition-all duration-300 ease-in-out ${
+          selectedNodeData ? 'w-[calc(100%-24rem)]' : 'w-full'
         }`}
       >
         {activeRootId ? (
           <CascadeGraph 
             key={activeRootId} 
             rootId={activeRootId} 
-            // FIX: This passes the clicked node data up to this page component
             onNodeSelect={(data) => setSelectedNodeData(data)} 
           />
         ) : (

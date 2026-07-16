@@ -109,17 +109,27 @@ export default function CascadeGraph({ rootId, onNodeSelect }: { rootId: string,
 
     const pathNodes = new Set<string>([selectedNodeId]);
     const pathEdges = new Set<string>();
+    const visited = new Set<string>(); // 🛡️ The Loop Shield
+
     let currentTargets = [selectedNodeId];
 
     while (currentTargets.length > 0) {
       const nextTargets: string[] = [];
-      edges.forEach(edge => {
-        if (currentTargets.includes(edge.target)) {
-          pathEdges.add(edge.id);
-          pathNodes.add(edge.source);
-          nextTargets.push(edge.source);
-        }
+      
+      currentTargets.forEach(targetId => {
+        // If we have already crawled backward from this node, skip it to prevent freezing
+        if (visited.has(targetId)) return;
+        visited.add(targetId);
+
+        edges.forEach(edge => {
+          if (edge.target === targetId) {
+            pathEdges.add(edge.id);
+            pathNodes.add(edge.source);
+            nextTargets.push(edge.source);
+          }
+        });
       });
+
       currentTargets = nextTargets;
     }
 
@@ -147,6 +157,7 @@ export default function CascadeGraph({ rootId, onNodeSelect }: { rootId: string,
     return { displayNodes: styledNodes, displayEdges: styledEdges };
   }, [nodes, edges, selectedNodeId]);
 
+  
   const onNodesChange = (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds));
   const onEdgesChange = (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds));
 

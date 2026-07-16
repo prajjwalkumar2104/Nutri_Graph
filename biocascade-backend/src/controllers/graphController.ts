@@ -1,18 +1,6 @@
 // src/controllers/graphController.ts
-import 'dotenv/config';
-import {type Request,type Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { Pool } from 'pg';
-import { PrismaPg } from '@prisma/adapter-pg';
-
-// 1. Initialize Prisma with the pg adapter
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error('DATABASE_URL is not defined in your .env file');
-}
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+import { type Request, type Response } from 'express';
+import { prisma } from '../utils/db'; // <-- This is all we need now!
 
 export const getCascadeTree = async (req: any, res: any) => {
   try {
@@ -68,8 +56,6 @@ export const getCascadeTree = async (req: any, res: any) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
-// Add this below getCascadeTree in src/controllers/graphController.ts
 
 export const searchNodes = async (req: Request, res: Response): Promise<void> => {
   try {
