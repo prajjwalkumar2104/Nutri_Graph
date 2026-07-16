@@ -77,6 +77,33 @@ export const getCascadeTree = async (req: any, res: any) => {
   }
 };
 
+
+export const getRootDeficiencies = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Fetch only entities flagged as DEFICIENCY to show on the landing catalog grid
+    const roots = await prisma.entity.findMany({
+      where: {
+        type: 'DEFICIENCY'
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        type: true
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+
+    res.status(200).json(roots);
+  } catch (error) {
+    console.error('Failed to pull root deficiency catalog:', error);
+    res.status(500).json({ error: 'Internal server error fetching root catalog.' });
+  }
+};
+
+
 export const searchNodes = async (req: Request, res: Response): Promise<void> => {
   try {
     // Grab the 'q' parameter from the URL (e.g., ?q=vitamin)
