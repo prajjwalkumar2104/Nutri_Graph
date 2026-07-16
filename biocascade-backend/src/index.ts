@@ -4,7 +4,7 @@ import express from 'express';
 import cors from 'cors';
 
 // Import our controllers
-import { getCascadeTree, searchNodes } from './controllers/graphController';
+import { getCascadeTree, searchNodes ,getRootDeficiencies} from './controllers/graphController';
 import { semanticSearch } from './controllers/searchController';
 
 const app = express();
@@ -16,6 +16,9 @@ app.use(express.json());
 // --- ROUTES ---
 
 // 1. Graph Data Endpoint
+
+app.get('/api/roots', getRootDeficiencies);
+
 app.get('/api/cascade/:id', getCascadeTree);
 
 // 2. Standard Text Search (Fallback)
