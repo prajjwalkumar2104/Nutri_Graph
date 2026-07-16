@@ -11,37 +11,57 @@ export const getCascadeTree = async (req: any, res: any) => {
       return res.status(400).json({ error: "Missing or invalid node ID parameter" });
     }
 
-    // 1. Fetch the recursive edges WITH A DEPTH LIMIT
+    // 1. BIDIRECTIONAL RECURSIVE FETCH
+    // We run two CTEs (Common Table Expressions) simultaneously:
+    // - Downstream: Finds all effects cascading FROM this node
+    // - Upstream: Finds all root causes leading TO this node
     const edges: any[] = await prisma.$queryRaw`
-      WITH RECURSIVE CascadeTree AS (
+      WITH RECURSIVE 
+      Downstream AS (
         SELECT "sourceId", "targetId", "relation", 1 AS depth
         FROM "Edge"
         WHERE "sourceId" = ${id}
 
         UNION ALL
 
-        SELECT e."sourceId", e."targetId", e."relation", ct.depth + 1
+        SELECT e."sourceId", e."targetId", e."relation", d.depth + 1
         FROM "Edge" e
-        INNER JOIN CascadeTree ct ON e."sourceId" = ct."targetId"
-        WHERE ct.depth < 7 
+        INNER JOIN Downstream d ON e."sourceId" = d."targetId"
+        WHERE d.depth < 6 
+      ),
+      Upstream AS (
+        SELECT "sourceId", "targetId", "relation", 1 AS depth
+        FROM "Edge"
+        WHERE "targetId" = ${id}
+
+        UNION ALL
+
+        SELECT e."sourceId", e."targetId", e."relation", u.depth + 1
+        FROM "Edge" e
+        INNER JOIN Upstream u ON e."targetId" = u."sourceId"
+        WHERE u.depth < 6
       )
-      SELECT "sourceId", "targetId", "relation" FROM CascadeTree;
+      
+      -- Combine the results of both searches and remove duplicates
+      SELECT "sourceId", "targetId", "relation" FROM Downstream
+      UNION
+      SELECT "sourceId", "targetId", "relation" FROM Upstream;
     `;
 
     if (!edges.length) {
-      // If no edges, just return the single root node
+      // If no edges at all (it's a floating island node), just return itself
       const rootNode = await prisma.entity.findUnique({ where: { id: id } });
       return res.json({ nodes: rootNode ? [rootNode] : [], edges: [] });
     }
 
-    // 2. Extract all unique Node IDs from the edges
+    // 2. Extract all unique Node IDs from the combined edges
     const nodeIds = new Set<string>();
     edges.forEach((edge) => {
       nodeIds.add(edge.sourceId);
       nodeIds.add(edge.targetId);
     });
 
-    // 3. Fetch the actual Node data for those IDs
+    // 3. Fetch the actual Node data for all gathered IDs
     const nodes = await prisma.entity.findMany({
       where: {
         id: { in: Array.from(nodeIds) }
@@ -52,7 +72,7 @@ export const getCascadeTree = async (req: any, res: any) => {
     res.json({ nodes, edges });
 
   } catch (error: any) {
-    console.error("Error fetching cascade tree:", error);
+    console.error("Error fetching bidirectional cascade tree:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
