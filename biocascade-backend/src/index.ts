@@ -6,6 +6,7 @@ import cors from 'cors';
 // Import our controllers
 import { getCascadeTree, searchNodes ,getRootDeficiencies} from './controllers/graphController';
 import { semanticSearch } from './controllers/searchController';
+import { findShortestPath } from './controllers/pathfnderController';
 
 const app = express();
 
@@ -20,6 +21,8 @@ app.use(express.json());
 app.get('/api/roots', getRootDeficiencies);
 
 app.get('/api/cascade/:id', getCascadeTree);
+
+app.get('/api/pathfinder', findShortestPath);
 
 // 2. Standard Text Search (Fallback)
 app.get('/api/search', searchNodes);

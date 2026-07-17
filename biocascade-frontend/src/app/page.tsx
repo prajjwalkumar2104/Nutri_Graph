@@ -56,14 +56,21 @@ export default function Home() {
     if (selectedNodeIds.length !== 2) return;
     setIsCalculatingPath(true);
     
-    // We will wire this up to the backend in the next step!
-    console.log("Triggering BFS algorithm for:", selectedNodeIds[0], "to", selectedNodeIds[1]);
-    
-    // Fake delay to simulate network/calculation
-    setTimeout(() => {
-       setIsCalculatingPath(false);
-       // setShortestPathIds(data.path); -> this will happen when backend is ready
-    }, 1000);
+    try {
+      const res = await fetch(`http://localhost:5000/api/pathfinder?startNodeId=${selectedNodeIds[0]}&endNodeId=${selectedNodeIds[1]}`);
+      
+      if (res.ok) {
+        const data = await res.json();
+        setShortestPathIds(data.path); // 🔥 Injects the glowing path into the graph!
+      } else {
+        alert("No biological link exists between these two nodes.");
+        setShortestPathIds(null);
+      }
+    } catch (error) {
+      console.error("Failed to calculate path:", error);
+    } finally {
+      setIsCalculatingPath(false);
+    }
   };
 
   return (
