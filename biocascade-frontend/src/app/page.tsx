@@ -1,10 +1,11 @@
+// src/app/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import CascadeGraph from '@/components/CascadeGraph';
 import SearchBar from '@/components/SearchBar';
 import Sidebar from '@/components/Sidebar';
-import { Activity, LayoutGrid, ChevronLeft } from 'lucide-react';
+import { Activity, LayoutGrid, ChevronLeft, Link as LinkIcon } from 'lucide-react';
 
 interface RootEntity {
   id: string;
@@ -16,10 +17,17 @@ interface RootEntity {
 export default function Home() {
   const [roots, setRoots] = useState<RootEntity[]>([]);
   const [activeRootId, setActiveRootId] = useState<string | null>(null);
+  
+  // State for single node selection (Sidebar)
   const [selectedNodeData, setSelectedNodeData] = useState<any | null>(null);
-  const [isLoadingRoots, setIsLoadingRoots] = useState(true);
+  
+  // State for multi-node selection (Algorithm Traversal)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const [shortestPathIds, setShortestPathIds] = useState<string[] | null>(null);
 
-  // 1. Fetch all unique vitamins and minerals for the catalog view
+  const [isLoadingRoots, setIsLoadingRoots] = useState(true);
+  const [isCalculatingPath, setIsCalculatingPath] = useState(false);
+
   useEffect(() => {
     const fetchRoots = async () => {
       try {
@@ -39,12 +47,46 @@ export default function Home() {
 
   const handleSelectRoot = (id: string) => {
     setActiveRootId(id);
-    setSelectedNodeData(null); // Clear sidebars between tree shifts
+    setSelectedNodeData(null);
+    setSelectedNodeIds([]);
+    setShortestPathIds(null);
+  };
+
+  const handleCalculatePath = async () => {
+    if (selectedNodeIds.length !== 2) return;
+    setIsCalculatingPath(true);
+    
+    // We will wire this up to the backend in the next step!
+    console.log("Triggering BFS algorithm for:", selectedNodeIds[0], "to", selectedNodeIds[1]);
+    
+    // Fake delay to simulate network/calculation
+    setTimeout(() => {
+       setIsCalculatingPath(false);
+       // setShortestPathIds(data.path); -> this will happen when backend is ready
+    }, 1000);
   };
 
   return (
     <main className="w-screen h-screen flex bg-slate-50 relative overflow-hidden font-sans">
       
+      {/* Floating Action Button for Pathfinding */}
+      {selectedNodeIds.length === 2 && !shortestPathIds && (
+        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-50">
+          <button 
+            onClick={handleCalculatePath}
+            disabled={isCalculatingPath}
+            className="flex items-center gap-2 px-8 py-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full shadow-lg shadow-amber-500/30 transition-all hover:scale-105 active:scale-95"
+          >
+            {isCalculatingPath ? (
+              <Activity className="w-5 h-5 animate-spin" />
+            ) : (
+              <LinkIcon className="w-5 h-5" />
+            )}
+            {isCalculatingPath ? "Calculating Path..." : "Find Connection"}
+          </button>
+        </div>
+      )}
+
       {/* Dynamic Command Palette - Floats on both views */}
       <div className="absolute top-6 left-0 right-0 z-50 px-4 pointer-events-none flex justify-center">
         <div className="pointer-events-auto w-full max-w-2xl">
@@ -101,10 +143,7 @@ export default function Home() {
         >
           {/* Back button to clear state and return to home catalog */}
           <button
-            onClick={() => {
-              setActiveRootId(null);
-              setSelectedNodeData(null);
-            }}
+            onClick={() => handleSelectRoot('')}
             className="absolute top-6 left-6 z-40 flex items-center gap-2 px-4 h-12 bg-white/90 backdrop-blur-md border border-slate-200 shadow-sm hover:shadow-md rounded-2xl text-slate-600 font-semibold text-sm transition-all active:scale-95"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -114,7 +153,12 @@ export default function Home() {
           <CascadeGraph 
             key={activeRootId} 
             rootId={activeRootId} 
-            onNodeSelect={(data) => setSelectedNodeData(data)} 
+            onNodeSelect={(data) => setSelectedNodeData(data)}
+            onMultiSelect={(ids) => {
+               setSelectedNodeIds(ids);
+               setShortestPathIds(null); // Clear previous path when selecting new nodes
+            }}
+            shortestPathIds={shortestPathIds}
           />
         </div>
       )}

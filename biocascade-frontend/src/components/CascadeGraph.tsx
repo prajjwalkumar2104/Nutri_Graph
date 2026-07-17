@@ -6,7 +6,7 @@ import {
   ReactFlow,
   Controls,
   Background,
-  MiniMap, // NEW IMPORT
+  MiniMap,
   applyNodeChanges,
   applyEdgeChanges,
   NodeChange,
@@ -47,15 +47,22 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   return { nodes: layoutedNodes, edges };
 };
 
-export default function CascadeGraph({ rootId, onNodeSelect }: { rootId: string, onNodeSelect: (data: any) => void }) {
+interface CascadeGraphProps {
+  rootId: string;
+  onNodeSelect: (data: any) => void;
+  onMultiSelect: (ids: string[]) => void;
+  shortestPathIds?: string[] | null;
+}
+
+export default function CascadeGraph({ rootId, onNodeSelect, onMultiSelect, shortestPathIds }: CascadeGraphProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchGraph = async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:5000/api/cascade/${rootId}`);
+        const res = await fetch(`http://localhost:5000/api/cascade/${rootId}`);
         if (!res.ok) throw new Error(`Backend failed with status: ${res.status}`);
         
         const data = await res.json();
@@ -93,11 +100,10 @@ export default function CascadeGraph({ rootId, onNodeSelect }: { rootId: string,
 
         setNodes(layoutedNodes);
         setEdges(layoutedEdges);
-        setSelectedNodeId(null);
+        setSelectedNodeIds([]);
+        onMultiSelect([]);
       } catch (error) {
         console.error("Failed to fetch graph:", error);
-        setNodes([]);
-        setEdges([]);
       }
     };
 
@@ -105,22 +111,67 @@ export default function CascadeGraph({ rootId, onNodeSelect }: { rootId: string,
   }, [rootId]);
 
   const { displayNodes, displayEdges } = useMemo(() => {
-    if (!selectedNodeId) return { displayNodes: nodes, displayEdges: edges };
+    // SCENARIO 1: We have a calculated path from the backend
+    if (shortestPathIds && shortestPathIds.length > 0) {
+      const pathNodesSet = new Set(shortestPathIds);
+      const pathEdgesSet = new Set<string>();
 
-    const pathNodes = new Set<string>([selectedNodeId]);
+      for (let i = 0; i < shortestPathIds.length - 1; i++) {
+        const n1 = shortestPathIds[i];
+        const n2 = shortestPathIds[i + 1];
+        const edge = edges.find(e => (e.source === n1 && e.target === n2) || (e.source === n2 && e.target === n1));
+        if (edge) pathEdgesSet.add(edge.id);
+      }
+
+      return {
+        displayNodes: nodes.map(node => ({
+          ...node,
+          style: { ...node.style, opacity: pathNodesSet.has(node.id) ? 1 : 0.2, transition: 'opacity 0.3s ease' }
+        })),
+        displayEdges: edges.map(edge => {
+          const isActive = pathEdgesSet.has(edge.id);
+          return {
+            ...edge,
+            animated: isActive,
+            style: {
+              stroke: isActive ? '#f59e0b' : '#e2e8f0', // Bright Orange for algorithm paths
+              strokeWidth: isActive ? 5 : 2,
+              transition: 'all 0.3s ease',
+              opacity: isActive ? 1 : 0.2
+            },
+            markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: isActive ? '#f59e0b' : '#e2e8f0' },
+          };
+        })
+      };
+    }
+
+    // SCENARIO 2: No selection, show standard graph
+    if (selectedNodeIds.length === 0) return { displayNodes: nodes, displayEdges: edges };
+
+    // SCENARIO 3: Two nodes selected (Awaiting algorithm calculation)
+    if (selectedNodeIds.length === 2) {
+      const selectedSet = new Set(selectedNodeIds);
+      return {
+        displayNodes: nodes.map(node => ({
+          ...node,
+          style: { ...node.style, opacity: selectedSet.has(node.id) ? 1 : 0.3, transition: 'opacity 0.3s ease' }
+        })),
+        displayEdges: edges.map(edge => ({ ...edge, style: { ...edge.style, opacity: 0.1 } }))
+      };
+    }
+
+    // SCENARIO 4: Single node clicked, do standard loop-shielded highlighting
+    const rootId = selectedNodeIds[0];
+    const pathNodes = new Set<string>([rootId]);
     const pathEdges = new Set<string>();
-    const visited = new Set<string>(); // 🛡️ The Loop Shield
+    const visited = new Set<string>();
 
-    let currentTargets = [selectedNodeId];
-
+    let currentTargets = [rootId];
     while (currentTargets.length > 0) {
       const nextTargets: string[] = [];
-      
       currentTargets.forEach(targetId => {
-        // If we have already crawled backward from this node, skip it to prevent freezing
         if (visited.has(targetId)) return;
         visited.add(targetId);
-
         edges.forEach(edge => {
           if (edge.target === targetId) {
             pathEdges.add(edge.id);
@@ -129,7 +180,6 @@ export default function CascadeGraph({ rootId, onNodeSelect }: { rootId: string,
           }
         });
       });
-
       currentTargets = nextTargets;
     }
 
@@ -146,22 +196,19 @@ export default function CascadeGraph({ rootId, onNodeSelect }: { rootId: string,
         style: {
           stroke: isActive ? '#3b82f6' : '#e2e8f0', 
           strokeWidth: isActive ? 4 : 2,
-          transition: 'stroke 0.3s ease, stroke-width 0.3s ease, opacity 0.3s ease',
+          transition: 'all 0.3s ease',
           opacity: isActive ? 1 : 0.2
         },
         markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: isActive ? '#3b82f6' : '#e2e8f0' },
-        labelStyle: { fill: isActive ? '#1e293b' : '#94a3b8', fontWeight: 700, fontSize: 12 }
       };
     });
 
     return { displayNodes: styledNodes, displayEdges: styledEdges };
-  }, [nodes, edges, selectedNodeId]);
+  }, [nodes, edges, selectedNodeIds, shortestPathIds]);
 
-  
   const onNodesChange = (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds));
   const onEdgesChange = (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds));
 
-  // Dynamic styling mapping for the Mini-Map preview nodes
   const getMiniMapNodeColor = (node: Node) => {
     switch (node.data?.type?.toUpperCase()) {
       case 'DEFICIENCY': return '#f59e0b';
@@ -180,21 +227,35 @@ export default function CascadeGraph({ rootId, onNodeSelect }: { rootId: string,
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={(event, node) => {
-          setSelectedNodeId(node.id);
-          onNodeSelect(node.data);
+          // SHIFT-CLICK LOGIC
+          let newSelection: string[] = [];
+          if (event.shiftKey) {
+            if (selectedNodeIds.includes(node.id)) {
+              newSelection = selectedNodeIds.filter(id => id !== node.id); // Toggle off
+            } else if (selectedNodeIds.length >= 2) {
+              newSelection = [selectedNodeIds[1], node.id]; // Keep max 2
+            } else {
+              newSelection = [...selectedNodeIds, node.id]; // Add second node
+            }
+          } else {
+            newSelection = [node.id]; // Standard single click
+          }
+          
+          setSelectedNodeIds(newSelection);
+          onMultiSelect(newSelection);
+          
+          // Only show sidebar if exactly 1 node is selected
+          onNodeSelect(newSelection.length === 1 ? node.data : null); 
         }}
         onPaneClick={() => {
-          setSelectedNodeId(null);
+          setSelectedNodeIds([]);
+          onMultiSelect([]);
           onNodeSelect(null);
         }}
         fitView
       >
         <Background color="#94a3b8" gap={24} size={2} />
-        
-        {/* Sleek Floating Control Utilities Menu */}
         <Controls className="bg-white/80 backdrop-blur-md border border-slate-200 shadow-lg rounded-xl overflow-hidden p-1" />
-        
-        {/* NEW: Clean Mini-Map Positioning Component */}
         <MiniMap 
           nodeColor={getMiniMapNodeColor}
           nodeStrokeWidth={3}
