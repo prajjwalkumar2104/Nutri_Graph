@@ -8,6 +8,12 @@ import { getCascadeTree, searchNodes ,getRootDeficiencies} from './controllers/g
 import { semanticSearch } from './controllers/searchController';
 import { findShortestPath } from './controllers/pathfnderController';
 
+// Inside src/index.ts
+import { generateAISummary } from './controllers/aiController';
+
+// ... other routes ...
+
+
 const app = express();
 
 // Middleware
@@ -17,6 +23,7 @@ app.use(express.json());
 // --- ROUTES ---
 
 // 1. Graph Data Endpoint
+app.post('/api/ai-summary', generateAISummary);
 
 app.get('/api/roots', getRootDeficiencies);
 

@@ -1,51 +1,51 @@
 // src/components/CustomNode.tsx
 import { Handle, Position } from '@xyflow/react';
-import { AlertCircle, Activity, HeartPulse, Skull } from 'lucide-react';
+import { Activity, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 export default function CustomNode({ data }: { data: any }) {
-  // 1. Dynamic Styling based on the Entity Type
-  const getTypeStyles = (type: string) => {
-    switch (type) {
-      case 'DEFICIENCY':
-        return { bg: 'bg-amber-50', border: 'border-amber-400', text: 'text-amber-700', icon: <AlertCircle size={18} /> };
-      case 'SYMPTOM':
-        return { bg: 'bg-blue-50', border: 'border-blue-400', text: 'text-blue-700', icon: <Activity size={18} /> };
-      case 'CONDITION':
-        return { bg: 'bg-purple-50', border: 'border-purple-400', text: 'text-purple-700', icon: <HeartPulse size={18} /> };
-      case 'DISEASE':
-        return { bg: 'bg-rose-50', border: 'border-rose-500', text: 'text-rose-700', icon: <Skull size={18} /> };
-      default:
-        return { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-600', icon: <Activity size={18} /> };
-    }
-  };
-
-  const styles = getTypeStyles(data.type);
+  // Determine colors based on entity type
+  const isDeficiency = data.type === 'DEFICIENCY';
+  const isDisease = data.type === 'DISEASE';
 
   return (
-    <div className={`w-72 shadow-lg rounded-2xl border-2 ${styles.border} ${styles.bg} p-4 transition-transform hover:scale-105`}>
-      {/* Target Handle (Top) - Where incoming lines connect */}
-      <Handle type="target" position={Position.Top} className="w-3 h-3 bg-slate-400 border-2 border-white" />
-      
-      <div className="flex items-center gap-3 mb-2">
-        <div className={`p-2 rounded-lg bg-white shadow-sm ${styles.text}`}>
-          {styles.icon}
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-sm leading-tight">{data.label}</h3>
-          <span className={`text-[10px] font-black uppercase tracking-wider ${styles.text}`}>
+    <div 
+      className={`relative w-[300px] bg-white rounded-2xl shadow-sm border-2 p-5 flex flex-col gap-2 transition-all 
+      ${isDeficiency ? 'border-amber-400' : isDisease ? 'border-rose-400' : 'border-blue-400'}`}
+    >
+      {/* ⬇️ INCOMING CONNECTION (TOP) */}
+      <Handle 
+        type="target" 
+        position={Position.Top} 
+        className="w-3 h-3 bg-slate-300 border-2 border-white"
+      />
+
+      {/* Node Header */}
+      <div className="flex items-center gap-2 mb-1">
+        {isDeficiency && <AlertTriangle className="w-4 h-4 text-amber-500" />}
+        {isDisease && <ShieldAlert className="w-4 h-4 text-rose-500" />}
+        {!isDeficiency && !isDisease && <Activity className="w-4 h-4 text-blue-500" />}
+        
+        <div className="flex flex-col">
+          <span className="font-bold text-slate-800 text-sm leading-tight">{data.label}</span>
+          <span className={`text-[10px] font-extrabold uppercase tracking-wider 
+            ${isDeficiency ? 'text-amber-600' : isDisease ? 'text-rose-600' : 'text-blue-600'}`}
+          >
             {data.type}
           </span>
         </div>
       </div>
-      
-      {data.description && (
-        <p className="text-xs text-slate-600 mt-2 leading-relaxed border-t border-slate-200/60 pt-2">
-          {data.description}
-        </p>
-      )}
 
-      {/* Source Handle (Bottom) - Where outgoing lines connect */}
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-slate-400 border-2 border-white" />
+      {/* Node Body */}
+      <p className="text-xs text-slate-500 line-clamp-4 font-medium leading-relaxed">
+        {data.description}
+      </p>
+
+      {/* ⬆️ OUTGOING CONNECTION (BOTTOM) */}
+      <Handle 
+        type="source" 
+        position={Position.Bottom} 
+        className="w-3 h-3 bg-slate-300 border-2 border-white"
+      />
     </div>
   );
 }

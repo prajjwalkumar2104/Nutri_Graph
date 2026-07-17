@@ -144,7 +144,7 @@ export default function Home() {
         
         // VIEW 2: REACT FLOW KNOWLEDGE CANVAS
         <div 
-          className={`flex-1 h-full relative transition-all duration-300 ease-in-out ${
+          className={`flex-1 h-full relative ${
             selectedNodeData ? 'w-[calc(100%-24rem)]' : 'w-full'
           }`}
         >
