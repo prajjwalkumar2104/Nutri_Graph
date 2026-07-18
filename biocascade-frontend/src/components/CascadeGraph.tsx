@@ -64,6 +64,7 @@ interface CascadeGraphProps {
   onNodeSelect: (data: any) => void;
   onMultiSelect: (ids: string[]) => void;
   shortestPathIds?: string[] | null;
+  treatedNodeIds: string[]; // 🔥 Added Treatment Mode Prop
 }
 
 export default function CascadeGraph({
@@ -71,6 +72,7 @@ export default function CascadeGraph({
   onNodeSelect,
   onMultiSelect,
   shortestPathIds,
+  treatedNodeIds,
 }: CascadeGraphProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -106,6 +108,7 @@ export default function CascadeGraph({
           targetPosition: Position.Top,
           sourcePosition: Position.Bottom,
           data: {
+            id: n.id, // 🔥 Ensure ID is passed down for the Sidebar
             label: n.name,
             type: n.type,
             description: n.description,
@@ -179,8 +182,44 @@ export default function CascadeGraph({
     );
   }, [isHeatmapMode]);
 
-  // 3. Highlight Logic (BFS / Pathfinder / Selection / Hover)
+  // 3. Highlight Logic (Treatment Simulation / BFS / Pathfinder / Selection / Hover)
   const { displayNodes, displayEdges } = useMemo(() => {
+    // 🔥 TREATMENT SIMULATION BFS (Downward Crawl)
+    const preventedNodes = new Set<string>();
+    const preventedEdges = new Set<string>();
+    const treatedSet = new Set(treatedNodeIds || []);
+
+    if (treatedSet.size > 0) {
+      let currentTargets = Array.from(treatedSet);
+      
+      while (currentTargets.length > 0) {
+        const nextTargets: string[] = [];
+        currentTargets.forEach((targetId) => {
+          edges.forEach((edge) => {
+            if (edge.source === targetId) {
+              preventedEdges.add(edge.id);
+              // If the child is not ALSO treated, mark it as prevented
+              if (!treatedSet.has(edge.target) && !preventedNodes.has(edge.target)) {
+                preventedNodes.add(edge.target);
+                nextTargets.push(edge.target);
+              }
+            }
+          });
+        });
+        currentTargets = nextTargets; // Move one layer deeper
+      }
+    }
+
+    // 🔥 Inject Treatment state into nodes BEFORE running other scenarios
+    const baseNodes = nodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        isTreated: treatedSet.has(node.id),
+        isPrevented: preventedNodes.has(node.id),
+      },
+    }));
+
     // SCENARIO 1: We have a calculated path from the backend
     if (shortestPathIds && shortestPathIds.length > 0) {
       const pathNodesSet = new Set(shortestPathIds);
@@ -198,7 +237,7 @@ export default function CascadeGraph({
       }
 
       return {
-        displayNodes: nodes.map((node) => ({
+        displayNodes: baseNodes.map((node) => ({
           ...node,
           style: {
             ...node.style,
@@ -208,21 +247,24 @@ export default function CascadeGraph({
         })),
         displayEdges: edges.map((edge) => {
           const isActive = pathEdgesSet.has(edge.id);
+          const isPrevented = preventedEdges.has(edge.id);
+          const strokeColor = isPrevented ? "#10b981" : isActive ? "#f59e0b" : "#e2e8f0";
+
           return {
             ...edge,
-            animated: isActive,
+            animated: isActive && !isPrevented,
             style: {
-              stroke: isActive ? "#f59e0b" : "#e2e8f0",
-              strokeWidth: isActive ? 5 : 2,
-              transition:
-                "stroke 0.3s ease, stroke-width 0.3s ease, opacity 0.3s ease",
-              opacity: isActive ? 1 : 0.2,
+              stroke: strokeColor,
+              strokeWidth: isActive && !isPrevented ? 5 : 2,
+              strokeDasharray: isPrevented ? "5,5" : "none",
+              transition: "stroke 0.3s ease, stroke-width 0.3s ease, opacity 0.3s ease",
+              opacity: isPrevented ? 0.3 : isActive ? 1 : 0.2,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
               width: 20,
               height: 20,
-              color: isActive ? "#f59e0b" : "#e2e8f0",
+              color: strokeColor,
             },
           };
         }),
@@ -233,7 +275,7 @@ export default function CascadeGraph({
     if (selectedNodeIds.length === 2) {
       const selectedSet = new Set(selectedNodeIds);
       return {
-        displayNodes: nodes.map((node) => ({
+        displayNodes: baseNodes.map((node) => ({
           ...node,
           style: {
             ...node.style,
@@ -272,7 +314,7 @@ export default function CascadeGraph({
         currentTargets = nextTargets;
       }
 
-      const styledNodes = nodes.map((node) => ({
+      const styledNodes = baseNodes.map((node) => ({
         ...node,
         style: {
           ...node.style,
@@ -283,21 +325,24 @@ export default function CascadeGraph({
 
       const styledEdges = edges.map((edge) => {
         const isActive = pathEdges.has(edge.id);
+        const isPrevented = preventedEdges.has(edge.id);
+        const strokeColor = isPrevented ? "#10b981" : isActive ? "#3b82f6" : "#e2e8f0";
+
         return {
           ...edge,
-          animated: isActive,
+          animated: isActive && !isPrevented,
           style: {
-            stroke: isActive ? "#3b82f6" : "#e2e8f0",
-            strokeWidth: isActive ? 4 : 2,
-            transition:
-              "stroke 0.3s ease, stroke-width 0.3s ease, opacity 0.3s ease",
-            opacity: isActive ? 1 : 0.2,
+            stroke: strokeColor,
+            strokeWidth: isActive && !isPrevented ? 4 : 2,
+            strokeDasharray: isPrevented ? "5,5" : "none",
+            transition: "stroke 0.3s ease, stroke-width 0.3s ease, opacity 0.3s ease",
+            opacity: isPrevented ? 0.3 : isActive ? 1 : 0.2,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
             width: 20,
             height: 20,
-            color: isActive ? "#3b82f6" : "#e2e8f0",
+            color: strokeColor,
           },
         };
       });
@@ -309,30 +354,51 @@ export default function CascadeGraph({
     if (hoveredNodeId && selectedNodeIds.length === 0 && (!shortestPathIds || shortestPathIds.length === 0)) {
       const styledEdges = edges.map((edge) => {
         const isHovered = edge.source === hoveredNodeId || edge.target === hoveredNodeId;
+        const isPrevented = preventedEdges.has(edge.id);
+        const strokeColor = isPrevented ? "#10b981" : isHovered ? '#8b5cf6' : '#e2e8f0';
+
         return {
           ...edge,
-          animated: isHovered,
+          animated: isHovered && !isPrevented,
           style: {
-            stroke: isHovered ? '#8b5cf6' : '#e2e8f0', // Purple highlight for hover
-            strokeWidth: isHovered ? 4 : 2,
+            stroke: strokeColor, 
+            strokeWidth: isHovered && !isPrevented ? 4 : 2,
+            strokeDasharray: isPrevented ? "5,5" : "none",
             transition: 'stroke 0.3s ease, stroke-width 0.3s ease, opacity 0.3s ease',
-            opacity: isHovered ? 1 : 0.3,
+            opacity: isPrevented ? 0.3 : isHovered ? 1 : 0.3,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
             width: 20,
             height: 20,
-            color: isHovered ? '#8b5cf6' : '#e2e8f0',
+            color: strokeColor,
           },
         };
       });
-      return { displayNodes: nodes, displayEdges: styledEdges };
+      return { displayNodes: baseNodes, displayEdges: styledEdges };
     }
 
-    // SCENARIO 5: No selection, show standard graph
-    return { displayNodes: nodes, displayEdges: edges };
+    // SCENARIO 5: No selection, show standard graph WITH Treatment styles applied
+    const standardEdges = edges.map((edge) => {
+      const isPrevented = preventedEdges.has(edge.id);
+      if (!isPrevented) return edge;
+      
+      return {
+        ...edge,
+        animated: false,
+        style: { ...edge.style, stroke: '#10b981', opacity: 0.3, strokeDasharray: '5,5' },
+       markerEnd: { 
+    type: MarkerType.ArrowClosed, 
+    width: 20, 
+    height: 20, 
+    color: '#10b981' 
+  },
+      };
+    });
 
-  }, [nodes, edges, selectedNodeIds, shortestPathIds, hoveredNodeId]);
+    return { displayNodes: baseNodes, displayEdges: standardEdges };
+
+  }, [nodes, edges, selectedNodeIds, shortestPathIds, hoveredNodeId, treatedNodeIds]); // 🔥 Added treatedNodeIds to dependencies
 
   const onNodesChange = (changes: NodeChange[]) =>
     setNodes((nds) => applyNodeChanges(changes, nds));
@@ -340,16 +406,20 @@ export default function CascadeGraph({
     setEdges((eds) => applyEdgeChanges(changes, eds));
 
   const getMiniMapNodeColor = (node: Node) => {
-    switch (node.data?.type?.toUpperCase()) {
-      case "DEFICIENCY":
-        return "#f59e0b";
-      case "SYMPTOM":
-        return "#3b82f6";
-      case "DISEASE":
-        return "#f43f5e";
-      default:
-        return "#cbd5e1";
-    }
+    if (node.data?.isTreated) return "#10b981"; // Emerald for treated
+    if (node.data?.isPrevented) return "#e2e8f0"; // Slate for prevented
+
+    // Safely cast to a string before converting to uppercase
+  switch (String(node.data?.type || "").toUpperCase()) {
+    case "DEFICIENCY":
+      return "#f59e0b";
+    case "SYMPTOM":
+      return "#3b82f6";
+    case "DISEASE":
+      return "#f43f5e";
+    default:
+      return "#cbd5e1";
+  }
   };
 
   return (

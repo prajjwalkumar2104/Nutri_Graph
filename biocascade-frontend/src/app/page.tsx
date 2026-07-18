@@ -25,6 +25,9 @@ export default function Home() {
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [shortestPathIds, setShortestPathIds] = useState<string[] | null>(null);
 
+  // 🔥 Treatment Mode State
+  const [treatedNodeIds, setTreatedNodeIds] = useState<string[]>([]);
+
   const [isLoadingRoots, setIsLoadingRoots] = useState(true);
   const [isCalculatingPath, setIsCalculatingPath] = useState(false);
 
@@ -50,6 +53,7 @@ export default function Home() {
     setSelectedNodeData(null);
     setSelectedNodeIds([]);
     setShortestPathIds(null);
+    setTreatedNodeIds([]); // Reset treatments when changing graphs
   };
 
   const handleCalculatePath = async () => {
@@ -61,7 +65,7 @@ export default function Home() {
       
       if (res.ok) {
         const data = await res.json();
-        setShortestPathIds(data.path); // 🔥 Injects the glowing path into the graph!
+        setShortestPathIds(data.path); // Injects the glowing path into the graph!
       } else {
         alert("No biological link exists between these two nodes.");
         setShortestPathIds(null);
@@ -71,6 +75,15 @@ export default function Home() {
     } finally {
       setIsCalculatingPath(false);
     }
+  };
+
+  // 🔥 Toggle Treatment Handler
+  const handleToggleTreatment = (nodeId: string) => {
+    setTreatedNodeIds((prev) => 
+      prev.includes(nodeId) 
+        ? prev.filter(id => id !== nodeId) // Remove it
+        : [...prev, nodeId] // Add it
+    );
   };
 
   return (
@@ -166,6 +179,7 @@ export default function Home() {
                setShortestPathIds(null); // Clear previous path when selecting new nodes
             }}
             shortestPathIds={shortestPathIds}
+            treatedNodeIds={treatedNodeIds} // 🔥 Pass treatment state to graph
           />
         </div>
       )}
@@ -174,6 +188,8 @@ export default function Home() {
       <Sidebar 
         nodeData={selectedNodeData} 
         onClose={() => setSelectedNodeData(null)} 
+        isTreated={selectedNodeData ? treatedNodeIds.includes(selectedNodeData.id) : false} // 🔥 Check if current node is treated
+        onToggleTreatment={handleToggleTreatment} // 🔥 Pass toggle function
       />
 
     </main>

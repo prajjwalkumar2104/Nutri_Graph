@@ -2,11 +2,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ExternalLink, Sparkles, Activity, Apple, Zap, Loader2 } from 'lucide-react';
+import { X, ExternalLink, Sparkles, Activity, Apple, Zap, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface SidebarProps {
   nodeData: any | null;
   onClose: () => void;
+  isTreated: boolean; 
+  onToggleTreatment: (nodeId: string) => void;
 }
 
 interface AIData {
@@ -15,7 +17,7 @@ interface AIData {
   absorptionTips: string[];
 }
 
-export default function Sidebar({ nodeData, onClose }: SidebarProps) {
+export default function Sidebar({ nodeData, onClose, isTreated, onToggleTreatment }: SidebarProps) {
   const [aiData, setAiData] = useState<AIData | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export default function Sidebar({ nodeData, onClose }: SidebarProps) {
     );
   }
 
-  const wikiUrl = `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(nodeData.name)}`;
+  const wikiUrl = `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(nodeData.name || nodeData.label)}`;
 
   const getTypeColor = (type: string) => {
     switch (type?.toUpperCase()) {
@@ -99,8 +101,22 @@ export default function Sidebar({ nodeData, onClose }: SidebarProps) {
           </p>
         </div>
 
-        {/* ACTION BUTTONS (Wikipedia & AI) */}
+        {/* ACTION BUTTONS */}
         <div className="flex flex-col gap-3 pt-4 border-t border-slate-200">
+
+          {/* 🔥 NEW TREATMENT BUTTON */}
+          <button 
+            onClick={() => onToggleTreatment(nodeData.id)}
+            className={`flex items-center justify-center gap-2 w-full py-3 px-4 font-semibold rounded-xl shadow-sm transition-all active:scale-[0.98] ${
+              isTreated 
+                ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 hover:bg-emerald-200' 
+                : 'bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50'
+            }`}
+          >
+            {isTreated ? <CheckCircle2 className="w-4 h-4" /> : <Activity className="w-4 h-4" />}
+            {isTreated ? "Cancel Treatment" : "Apply Clinical Treatment"}
+          </button>
+          
           <a 
             href={wikiUrl}
             target="_blank"
