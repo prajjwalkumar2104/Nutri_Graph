@@ -83,7 +83,9 @@ export const getRootDeficiencies = async (req: Request, res: Response): Promise<
     // Fetch only entities flagged as DEFICIENCY to show on the landing catalog grid
     const roots = await prisma.entity.findMany({
       where: {
-        type: 'DEFICIENCY'
+        type: {
+      in: ['DEFICIENCY', 'HORMONE_IMBALANCE', 'GLANDULAR_DYSFUNCTION']
+    }
       },
       select: {
         id: true,
