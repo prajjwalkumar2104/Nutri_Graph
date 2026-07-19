@@ -116,7 +116,7 @@ export default function Home() {
 
       {/* VIEW 1: LANDING CATALOG GRID */}
       {!activeRootId ? (
-        <div className="w-full h-full pt-28 px-8 overflow-y-auto max-w-7xl mx-auto flex flex-col justify-center">
+        <div className="w-full h-full pt-32 px-8 pb-12 overflow-y-auto max-w-7xl mx-auto flex flex-col justify-start">
           <div className="mb-8">
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-3">
               <LayoutGrid className="w-8 h-8 text-blue-500" />
