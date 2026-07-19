@@ -2,6 +2,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/client"
 }
 
 datasource db {
@@ -13,6 +14,8 @@ enum EntityType {
   SYMPTOM
   CONDITION
   DISEASE
+  HORMONE_IMBALANCE
+  GLANDULAR_DYSFUNCTION
 }
 
 model Entity {
@@ -20,6 +23,7 @@ model Entity {
   name        String     @unique
   type        EntityType
   description String?
+  embedding   Unsupported("vector(768)")?
 
   // Relationship definitions for graph traversal
   edgesOut Edge[] @relation("SourceEntity")
