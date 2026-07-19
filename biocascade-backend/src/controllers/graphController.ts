@@ -1,7 +1,7 @@
 // src/controllers/graphController.ts
 import { type Request, type Response } from 'express';
 import { prisma } from '../utils/db'; // <-- This is all we need now!
-
+import { PrismaClient } from '../generated/client/index.js';
 export const getCascadeTree = async (req: any, res: any) => {
   try {
     // Safely extract the identifier from the route parameters

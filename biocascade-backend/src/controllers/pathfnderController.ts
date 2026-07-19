@@ -1,5 +1,6 @@
 import { type Request,type Response } from 'express';
 import { prisma } from '../utils/db';
+import { PrismaClient } from '../generated/client/index.js';
 
 export const findShortestPath = async (req: Request, res: Response): Promise<void> => {
   try {
