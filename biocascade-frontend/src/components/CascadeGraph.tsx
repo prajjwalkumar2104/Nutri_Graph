@@ -59,16 +59,17 @@ const getLayoutedElements = (
   return { nodes: layoutedNodes, edges };
 };
 
+// 🔥 UPDATED: Now accepts an array of rootIds for Multi-Root Merging
 interface CascadeGraphProps {
-  rootId: string;
+  rootIds: string[]; 
   onNodeSelect: (data: any) => void;
   onMultiSelect: (ids: string[]) => void;
   shortestPathIds?: string[] | null;
-  treatedNodeIds: string[]; // 🔥 Added Treatment Mode Prop
+  treatedNodeIds: string[];
 }
 
 export default function CascadeGraph({
-  rootId,
+  rootIds, // 🔥 UPDATED
   onNodeSelect,
   onMultiSelect,
   shortestPathIds,
@@ -84,7 +85,13 @@ export default function CascadeGraph({
   useEffect(() => {
     const fetchGraph = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/cascade/${rootId}`);
+        // 🔥 UPDATED: Hitting the Multi-Root POST API Endpoint
+        const res = await fetch(`http://localhost:5000/api/cascade/multi`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rootIds })
+        });
+        
         if (!res.ok)
           throw new Error(`Backend failed with status: ${res.status}`);
 
@@ -108,7 +115,7 @@ export default function CascadeGraph({
           targetPosition: Position.Top,
           sourcePosition: Position.Bottom,
           data: {
-            id: n.id, // 🔥 Ensure ID is passed down for the Sidebar
+            id: n.id,
             label: n.name,
             type: n.type,
             description: n.description,
@@ -117,6 +124,7 @@ export default function CascadeGraph({
           },
         }));
 
+        // Deduplicate nodes (crucial for Multi-Root merging!)
         const uniqueNodes = Array.from(
           new Map(rawNodes.map((node) => [node.id, node])).values()
         );
@@ -143,6 +151,7 @@ export default function CascadeGraph({
           },
         }));
 
+        // Deduplicate edges to prevent rendering crashes
         const uniqueEdgesMap = new Map();
         rawEdges.forEach((edge) =>
           uniqueEdgesMap.set(`${edge.source}-${edge.target}`, edge)
@@ -166,8 +175,9 @@ export default function CascadeGraph({
       }
     };
 
-    if (rootId) fetchGraph();
-  }, [rootId]); // Note: We intentionally do NOT include isHeatmapMode here to avoid re-fetching data
+    // 🔥 UPDATED: Only fetch if the array has IDs
+    if (rootIds && rootIds.length > 0) fetchGraph();
+  }, [rootIds]); // Note: Dependency array updated to rootIds
 
   // 2. Reactively update node data when Heatmap toggle changes (avoids re-fetching)
   useEffect(() => {
@@ -388,17 +398,17 @@ export default function CascadeGraph({
         animated: false,
         style: { ...edge.style, stroke: '#10b981', opacity: 0.3, strokeDasharray: '5,5' },
        markerEnd: { 
-    type: MarkerType.ArrowClosed, 
-    width: 20, 
-    height: 20, 
-    color: '#10b981' 
-  },
+          type: MarkerType.ArrowClosed, 
+          width: 20, 
+          height: 20, 
+          color: '#10b981' 
+        },
       };
     });
 
     return { displayNodes: baseNodes, displayEdges: standardEdges };
 
-  }, [nodes, edges, selectedNodeIds, shortestPathIds, hoveredNodeId, treatedNodeIds]); // 🔥 Added treatedNodeIds to dependencies
+  }, [nodes, edges, selectedNodeIds, shortestPathIds, hoveredNodeId, treatedNodeIds]);
 
   const onNodesChange = (changes: NodeChange[]) =>
     setNodes((nds) => applyNodeChanges(changes, nds));
@@ -409,10 +419,11 @@ export default function CascadeGraph({
     if (node.data?.isTreated) return "#10b981"; // Emerald for treated
     if (node.data?.isPrevented) return "#e2e8f0"; // Slate for prevented
 
-    // Safely cast to a string before converting to uppercase
   switch (String(node.data?.type || "").toUpperCase()) {
     case "DEFICIENCY":
-      return "#f59e0b";
+    case "HORMONE_IMBALANCE":
+    case "GLANDULAR_DYSFUNCTION":
+      return "#f59e0b"; // Root causes
     case "SYMPTOM":
       return "#3b82f6";
     case "DISEASE":
@@ -428,6 +439,7 @@ export default function CascadeGraph({
         nodes={displayNodes}
         edges={displayEdges}
         nodeTypes={nodeTypes}
+        proOptions={{ hideAttribution: true }}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
