@@ -10,6 +10,7 @@ import { findShortestPath } from './controllers/pathfnderController';
 
 // Inside src/index.ts
 import { generateAISummary } from './controllers/aiController';
+import { getMultiCascade } from './controllers/graphController';
 
 // ... other routes ...
 
@@ -21,7 +22,7 @@ app.use(cors());
 app.use(express.json());
 
 // --- ROUTES ---
-
+app.post('/api/cascade/multi', getMultiCascade);
 // 1. Graph Data Endpoint
 app.post('/api/ai-summary', generateAISummary);
 

@@ -2,6 +2,64 @@
 import { type Request, type Response } from 'express';
 import { prisma } from '../utils/db'; // <-- This is all we need now!
 import { PrismaClient } from '../generated/client/index.js';
+
+
+
+
+export const getMultiCascade = async (req: Request, res: Response) => {
+  try {
+    const { rootIds } = req.body; 
+
+    if (!rootIds || !Array.isArray(rootIds) || rootIds.length === 0) {
+      return res.status(400).json({ error: "Please provide an array of rootIds" });
+    }
+
+    const allEdges = [];
+    const visitedNodeIds = new Set<string>(rootIds);
+    let currentFrontier = [...rootIds];
+    
+    // Safety guardrail to prevent infinite biological loops
+    const MAX_DEPTH = 6; 
+    let currentDepth = 0;
+
+    // 🔄 Breadth-First Search (BFS) Traversal
+    while (currentFrontier.length > 0 && currentDepth < MAX_DEPTH) {
+      // Find all edges where the source is in our current frontier
+      const edges = await prisma.edge.findMany({
+        where: { sourceId: { in: currentFrontier } }
+      });
+
+      if (edges.length === 0) break;
+
+      allEdges.push(...edges);
+
+      // Find the new target nodes we just reached to crawl deeper
+      const nextFrontier = [];
+      for (const edge of edges) {
+        if (!visitedNodeIds.has(edge.targetId)) {
+          visitedNodeIds.add(edge.targetId);
+          nextFrontier.push(edge.targetId);
+        }
+      }
+
+      currentFrontier = nextFrontier;
+      currentDepth++;
+    }
+
+    // 📦 Fetch the actual Node data for every ID we touched in the crawl
+    const nodes = await prisma.entity.findMany({
+      where: { id: { in: Array.from(visitedNodeIds) } }
+    });
+
+    res.json({ nodes, edges: allEdges });
+
+  } catch (error) {
+    console.error("Error fetching multi-root cascade:", error);
+    res.status(500).json({ error: "Failed to merge graph cascades" });
+  }
+};
+
+
 export const getCascadeTree = async (req: any, res: any) => {
   try {
     // Safely extract the identifier from the route parameters
