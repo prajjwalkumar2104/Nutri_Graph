@@ -12,14 +12,26 @@ import { findShortestPath } from './controllers/pathfnderController';
 import { generateAISummary } from './controllers/aiController';
 import { getMultiCascade } from './controllers/graphController';
 
+import multer from 'multer';
+import { parseLabReport } from './controllers/uploadController';
+
+// Setup Multer to store files temporarily in RAM (Memory)
+
+
 // ... other routes ...
 
 
 const app = express();
 
+
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Add this POST route (allows up to 5 files at once)
+app.post('/api/parse-report', upload.array('files', 5), parseLabReport);
 
 // --- ROUTES ---
 app.post('/api/cascade/multi', getMultiCascade);
