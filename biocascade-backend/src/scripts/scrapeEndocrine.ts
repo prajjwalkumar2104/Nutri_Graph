@@ -8,7 +8,7 @@ import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 // 🔥 1. PRISMA CACHE BYPASS IMPORT (From our previous fix)
-import { PrismaClient, EntityType } from '../generated/client/index.js';
+import { PrismaClient , EntityType } from '@prisma/client';
 
 // 2. Initialize Database with Strict Connection Limits (Prevents Supabase Crashes)
 const connectionString = process.env.DATABASE_URL;

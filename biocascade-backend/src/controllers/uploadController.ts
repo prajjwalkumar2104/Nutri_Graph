@@ -1,9 +1,8 @@
 // src/controllers/uploadController.ts
 import { type Request,type Response } from 'express';
-import { PrismaClient } from '../generated/client/index.js';
+import { prisma } from '../prisma';
 import { GoogleGenAI, Type, type Schema } from '@google/genai';
 
-const prisma = new PrismaClient();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string});
 
 // Enforce Gemini to output a strict array of strings

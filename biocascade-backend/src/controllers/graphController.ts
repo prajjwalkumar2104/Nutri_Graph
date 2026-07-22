@@ -1,7 +1,6 @@
 // src/controllers/graphController.ts
 import { type Request, type Response } from 'express';
-import { prisma } from '../utils/db'; // <-- This is all we need now!
-import { PrismaClient } from '../generated/client/index.js';
+import { prisma } from '../prisma';// <-- This is all we need now!
 
 
 

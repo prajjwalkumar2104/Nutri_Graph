@@ -1,6 +1,5 @@
 import { type Request,type Response } from 'express';
-import { prisma } from '../utils/db';
-import { PrismaClient } from '../generated/client/index.js';
+import { prisma } from '../prisma';
 
 export const findShortestPath = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -16,7 +15,7 @@ export const findShortestPath = async (req: Request, res: Response): Promise<voi
     // 🔥 THE FIX: Build a BIDIRECTIONAL Adjacency List
     const graph = new Map<string, string[]>();
     
-    allEdges.forEach(edge => {
+    allEdges.forEach(edge=> {
       if (!graph.has(edge.sourceId)) graph.set(edge.sourceId, []);
       if (!graph.has(edge.targetId)) graph.set(edge.targetId, []);
       
