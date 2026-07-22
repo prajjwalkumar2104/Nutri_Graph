@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import CascadeGraph from '@/components/CascadeGraph';
 import SearchBar from '@/components/SearchBar';
 import Sidebar from '@/components/Sidebar';
-import { Activity, LayoutGrid, ChevronLeft, Link as LinkIcon, Combine } from 'lucide-react';
+import { Activity, LayoutGrid, ChevronLeft, Link as LinkIcon, Combine ,UploadCloud , Loader2 } from 'lucide-react';
 
 interface RootEntity {
   id: string;
@@ -20,6 +20,9 @@ export default function Home() {
   // 🔥 Upgraded to Array for Multi-Root Merging
   const [selectedRoots, setSelectedRoots] = useState<string[]>([]);
   const [isGraphActive, setIsGraphActive] = useState(false);
+
+  const [isUploading, setIsUploading] = useState(false);
+const [uploadFeedback, setUploadFeedback] = useState<string | null>(null);
   
   // State for single node selection (Sidebar)
   const [selectedNodeData, setSelectedNodeData] = useState<any | null>(null);
@@ -59,6 +62,48 @@ export default function Home() {
         : [...prev, id] // Add if not selected
     );
   };
+
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+
+  setIsUploading(true);
+  setUploadFeedback("Analyzing Lab Report via AI...");
+
+  const formData = new FormData();
+  Array.from(files).forEach((file) => {
+    formData.append('files', file);
+  });
+
+  try {
+    const response = await fetch('http://localhost:5000/api/parse-report', {
+      method: 'POST',
+      body: formData, // Notice: No JSON.stringify or Headers for FormData
+    });
+
+    const data = await response.json();
+
+    if (data.rootIds && data.rootIds.length > 0) {
+      setUploadFeedback(`Matched ${data.rootIds.length} biological markers! Merging...`);
+      setSelectedRoots(data.rootIds); // Set the active IDs
+      
+      // Small delay so user can read the success message before canvas loads
+      setTimeout(() => {
+        setIsGraphActive(true); 
+        setIsUploading(false);
+        setUploadFeedback(null);
+      }, 1500);
+    } else {
+      setUploadFeedback("AI found no direct matches in the database.");
+      setIsUploading(false);
+    }
+  } catch (error) {
+    console.error("Upload failed", error);
+    setUploadFeedback("Upload failed. Try again.");
+    setIsUploading(false);
+  }
+};
 
   // Triggered when clicking a SearchBar result
   const handleSearchSelect = (id: string) => {
@@ -154,6 +199,34 @@ export default function Home() {
           <SearchBar onSelect={handleSearchSelect} />
         </div>
       </div>
+
+      {/* 🚀 MULTI-MODAL UPLOAD SECTION */}
+<div className="mb-10 p-8 border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-2xl text-center relative overflow-hidden transition-all hover:border-blue-400">
+  <input 
+    type="file" 
+    multiple 
+    accept="image/png, image/jpeg, application/pdf"
+    onChange={handleFileUpload}
+    disabled={isUploading}
+    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+  />
+  
+  <div className="flex flex-col items-center justify-center gap-3">
+    {isUploading ? (
+      <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+    ) : (
+      <UploadCloud className="w-10 h-10 text-blue-500" />
+    )}
+    
+    <h2 className="text-xl font-bold text-slate-800">
+      {isUploading ? 'AI is Processing...' : 'Upload Lab Report'}
+    </h2>
+    
+    <p className="text-slate-500 font-medium">
+      {uploadFeedback || 'Drag & Drop PDF or Images to auto-detect pathological root causes.'}
+    </p>
+  </div>
+</div>
 
       {/* VIEW 1: LANDING CATALOG GRID */}
       {!isGraphActive ? (
