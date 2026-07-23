@@ -49,12 +49,13 @@ export default function Home() {
   }, []);
 
   // 3. CATEGORIZED DATA (Edge Case: Normalize strings to prevent case-sensitive mismatches)
-  const vitaminRoots = roots.filter(r => 
-    r.type.toLowerCase().includes('vitamin') || r.type.toLowerCase().includes('mineral')
-  );
-  
   const hormonalRoots = roots.filter(r => 
     r.type.toLowerCase().includes('hormone') || r.type.toLowerCase().includes('endocrine')
+  );
+
+  // Everything that is NOT hormonal falls into Vitamins & Minerals
+  const vitaminRoots = roots.filter(r => 
+    !hormonalRoots.includes(r)
   );
 
   const otherRoots = roots.filter(r => 
@@ -293,47 +294,53 @@ export default function Home() {
           ) : (
             <div className="space-y-16">
               
-              {/* SECTION: VITAMINS & MINERALS */}
+              {/* SECTION 1: VITAMINS & MINERALS (At the top) */}
               <section>
                 <div className="flex items-center gap-3 mb-6 pb-2 border-b-2 border-amber-100">
-                  <div className="p-2 bg-amber-100 text-amber-600 rounded-lg"><Activity size={20} /></div>
-                  <h2 className="text-2xl font-bold text-slate-800">Nutritional Deficiencies</h2>
+                  <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                    <Activity size={20} />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-800">Vitamins & Minerals</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {vitaminRoots.map((root) => (
-                    <RootCard key={root.id} root={root} isSelected={selectedRoots.includes(root.id)} onToggle={() => toggleRootSelection(root.id)} colorTheme="amber" />
+                    <RootCard 
+                      key={root.id} 
+                      root={root} 
+                      isSelected={selectedRoots.includes(root.id)} 
+                      onToggle={() => toggleRootSelection(root.id)} 
+                      colorTheme="amber" 
+                    />
                   ))}
-                  {vitaminRoots.length === 0 && <p className="text-slate-400 italic">No nutritional roots found in DB.</p>}
+                  {vitaminRoots.length === 0 && (
+                    <p className="text-slate-400 italic">No vitamins or minerals found in DB.</p>
+                  )}
                 </div>
               </section>
 
-              {/* SECTION: HORMONAL IMBALANCES */}
+              {/* SECTION 2: ENDOCRINE SYSTEM */}
               <section>
                 <div className="flex items-center gap-3 mb-6 pb-2 border-b-2 border-rose-100">
-                  <div className="p-2 bg-rose-100 text-rose-600 rounded-lg"><Activity size={20} /></div>
-                  <h2 className="text-2xl font-bold text-slate-800">Endocrine & Hormonal</h2>
+                  <div className="p-2 bg-rose-100 text-rose-600 rounded-lg">
+                    <Activity size={20} />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-800">Endocrine System</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {hormonalRoots.map((root) => (
-                    <RootCard key={root.id} root={root} isSelected={selectedRoots.includes(root.id)} onToggle={() => toggleRootSelection(root.id)} colorTheme="rose" />
+                    <RootCard 
+                      key={root.id} 
+                      root={root} 
+                      isSelected={selectedRoots.includes(root.id)} 
+                      onToggle={() => toggleRootSelection(root.id)} 
+                      colorTheme="rose" 
+                    />
                   ))}
-                  {hormonalRoots.length === 0 && <p className="text-slate-400 italic">No hormonal roots found in DB.</p>}
+                  {hormonalRoots.length === 0 && (
+                    <p className="text-slate-400 italic">No endocrine roots found in DB.</p>
+                  )}
                 </div>
               </section>
-
-              {/* SECTION: OTHERS (Fallback) */}
-              {otherRoots.length > 0 && (
-                <section>
-                  <div className="flex items-center gap-3 mb-6 pb-2 border-b-2 border-slate-200">
-                    <h2 className="text-xl font-bold text-slate-800">Other Systems</h2>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {otherRoots.map((root) => (
-                      <RootCard key={root.id} root={root} isSelected={selectedRoots.includes(root.id)} onToggle={() => toggleRootSelection(root.id)} colorTheme="blue" />
-                    ))}
-                  </div>
-                </section>
-              )}
 
             </div>
           )}
