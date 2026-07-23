@@ -15,15 +15,12 @@ import { getMultiCascade } from './controllers/graphController';
 import multer from 'multer';
 import { parseLabReport } from './controllers/uploadController';
 
+// 🔥 1. IMPORT REDIS AND MIDDLEWARE
+import { connectRedis } from './redis';
+import { cacheMultiCascade } from './middleware/cacheMiddleware';
+
 // Setup Multer to store files temporarily in RAM (Memory)
-
-
-// ... other routes ...
-
-
 const app = express();
-
-
 
 // Middleware
 app.use(cors());
@@ -34,7 +31,10 @@ const upload = multer({ storage: multer.memoryStorage() });
 app.post('/api/parse-report', upload.array('files', 5), parseLabReport);
 
 // --- ROUTES ---
-app.post('/api/cascade/multi', getMultiCascade);
+
+// 🔥 2. INJECT CACHE MIDDLEWARE BEFORE THE CONTROLLER
+app.post('/api/cascade/multi', cacheMultiCascade, getMultiCascade);
+
 // 1. Graph Data Endpoint
 app.post('/api/ai-summary', generateAISummary);
 
@@ -64,6 +64,9 @@ app.use((err: any, req: any, res: any, next: any) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+
+// 🔥 3. INITIALIZE REDIS CONNECTION ON SERVER START
+app.listen(PORT, async () => {
+  await connectRedis();
   console.log(`🚀 Backend API running actively on http://localhost:${PORT}`);
 });

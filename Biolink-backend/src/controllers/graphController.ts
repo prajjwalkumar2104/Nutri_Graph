@@ -1,5 +1,6 @@
 // src/controllers/graphController.ts
 import { type Request, type Response } from 'express';
+import { redis } from '../redis'; 
 import { prisma } from '../prisma';// <-- This is all we need now!
 
 
@@ -50,14 +51,26 @@ export const getMultiCascade = async (req: Request, res: Response) => {
       where: { id: { in: Array.from(visitedNodeIds) } }
     });
 
-    res.json({ nodes, edges: allEdges });
+    // ---------------------------------------------------------
+    // 🚀 NEW REDIS LOGIC STARTS HERE
+    // ---------------------------------------------------------
+    const graphData = { nodes, edges: allEdges };
+    const cacheKey = (req as any).cacheKey; // Typecasting bypasses the strict TS error
+
+    if (cacheKey && redis.isOpen) {
+      // Set TTL to 24 hours (86400 seconds) since biological data doesn't change rapidly
+      await redis.setEx(cacheKey, 86400, JSON.stringify(graphData));
+    }
+
+    // Return the payload to the frontend
+    res.json(graphData);
+    // ---------------------------------------------------------
 
   } catch (error) {
     console.error("Error fetching multi-root cascade:", error);
     res.status(500).json({ error: "Failed to merge graph cascades" });
   }
 };
-
 
 export const getCascadeTree = async (req: any, res: any) => {
   try {
