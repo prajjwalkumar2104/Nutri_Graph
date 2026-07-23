@@ -382,7 +382,7 @@ export default function Home() {
 }
 
 // ---------------------------------------------------------
-// HELPER COMPONENT: Reusable Card for Grid Items
+// HELPER COMPONENT: Reusable Card for Grid Items :: 
 // ---------------------------------------------------------
 function RootCard({ root, isSelected, onToggle, colorTheme }: { root: RootEntity, isSelected: boolean, onToggle: () => void, colorTheme: 'amber' | 'rose' | 'blue' }) {
   
