@@ -220,7 +220,10 @@ export default function Home() {
             </div>
           </div>
           <button 
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' }) || setActiveView('catalog')}
+            onClick={() => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setActiveView('catalog');
+}}
             className="px-10 py-5 bg-blue-600 text-white rounded-full font-bold text-xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-600/40 hover:-translate-y-1"
           >
             Enter the System
